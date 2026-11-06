@@ -110,3 +110,43 @@ def test_cli_tiny(tmp_path, monkeypatch):
         "--runs", str(tmp_path / "runs")])
     T.main()
     assert (tmp_path / "ck" / "rf" / "final.pt").exists()
+
+
+@pytest.mark.parametrize("name", ["ddpm", "rf"])
+def test_sample_every_writes_pngs_and_gif(tmp_path, name):
+    from PIL import Image
+    _run(tmp_path, name, epochs=2, sample_every=1)
+    d = tmp_path / "runs" / "epoch_samples"
+    assert (d / f"{name}_epoch01.png").is_file()
+    assert (d / f"{name}_epoch02.png").is_file()
+    assert Image.open(d / f"{name}_epochs.gif").n_frames == 2
+
+
+def test_sample_every_zero_writes_nothing(tmp_path):
+    _run(tmp_path, "rf", epochs=1, sample_every=0)
+    assert not (tmp_path / "runs" / "epoch_samples").exists()
+
+
+def test_sample_every_n_skips_epochs(tmp_path):
+    _run(tmp_path, "rf", epochs=3, sample_every=2)
+    d = tmp_path / "runs" / "epoch_samples"
+    assert sorted(p.name for p in d.glob("*.png")) == ["rf_epoch02.png"]
+
+
+@pytest.mark.parametrize("name", ["ddpm", "rf"])
+def test_sampling_does_not_change_weights(tmp_path, name):
+    a = tmp_path / "a"; b = tmp_path / "b"
+    a.mkdir(); b.mkdir()
+    sa = load_checkpoint(_run(a, name, epochs=2, sample_every=0), "cpu")
+    sb = load_checkpoint(_run(b, name, epochs=2, sample_every=1), "cpu")
+    for key in ("model", "ema"):
+        assert all(torch.equal(sa[key][k], sb[key][k]) for k in sa[key])
+
+
+def test_cli_sample_every(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "argv", [
+        "train", "--model", "rf", "--epochs", "1", "--device", "cpu", "--tiny",
+        "--sample-every", "1", "--out", str(tmp_path / "ck"),
+        "--data", str(tmp_path / "d"), "--runs", str(tmp_path / "runs")])
+    T.main()
+    assert (tmp_path / "runs" / "epoch_samples" / "rf_epoch01.png").exists()
