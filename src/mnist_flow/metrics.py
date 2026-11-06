@@ -32,11 +32,19 @@ def frechet_distance(feat_a: Tensor, feat_b: Tensor) -> float:
         raise ValueError(f"feature shapes incompatible: {tuple(feat_a.shape)} vs {tuple(feat_b.shape)}")
     mu_a, sa = _mean_cov(feat_a)
     mu_b, sb = _mean_cov(feat_b)
-    root_a = _psd_sqrt(sa)
-    eig = torch.linalg.eigvalsh(root_a @ sb @ root_a).clamp_min(0)
-    tr_sqrt = eig.sqrt().sum()
+    # Tr((Sa Sb)^(1/2)) = sum of sqrt of the eigenvalues of Sa Sb. The product
+    # is not symmetric, so use the general eigensolver and keep the real part;
+    # the eigenvalues are real and non-negative in exact arithmetic. This is
+    # more robust than eigh on Sa^(1/2) Sb Sa^(1/2) for ill-conditioned
+    # covariances (dead feature dims), where some LAPACK builds return
+    # inaccurate eigenvectors and the distance comes out negative.
+    eig = torch.linalg.eigvals(sa @ sb)
+    tr_sqrt = eig.sqrt().real.sum()
     d = (mu_a - mu_b).pow(2).sum() + sa.trace() + sb.trace() - 2 * tr_sqrt
-    return float(d)
+    val = float(d)
+    if val < -1e-6 * max(1.0, float(sa.trace() + sb.trace())):
+        raise ArithmeticError(f"frechet_distance came out negative ({val:.6g}); numerical failure")
+    return max(val, 0.0)
 
 
 def class_histogram(logits: Tensor) -> list[int]:

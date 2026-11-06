@@ -100,3 +100,26 @@ def test_compute_generation_metrics_keys():
     }
     assert m["n_real"] == 40 and m["n_gen"] == 30
     assert isinstance(m["fid"], float) and sum(m["class_histogram"]) == 30
+
+
+def test_frechet_ill_conditioned_features_is_nonnegative_and_matches_product_eigs():
+    """Regression: post-ReLU features with dead dims and a huge eigenvalue spread
+    produced a negative distance via the symmetric-sqrt route on some LAPACK builds."""
+    import torch
+    from mnist_flow.metrics import _mean_cov, frechet_distance
+    g = torch.Generator().manual_seed(7)
+    n, d = 4000, 128
+    scale = torch.logspace(-4, 3, d)
+    base = torch.randn(n, d, generator=g) * scale
+    a = (base + 2.0).relu()
+    b = (torch.randn(n, d, generator=g) * scale + 2.5).relu()
+    a[:, :10] = 0.0  # dead units -> rank-deficient covariance
+    b[:, :10] = 0.0
+    fd = frechet_distance(a, b)
+    assert fd >= 0.0
+    mu_a, sa = _mean_cov(a)
+    mu_b, sb = _mean_cov(b)
+    ref = float((mu_a - mu_b).pow(2).sum() + sa.trace() + sb.trace()
+                - 2 * torch.linalg.eigvals(sa @ sb).sqrt().real.sum())
+    assert abs(fd - ref) <= 1e-6 * max(1.0, abs(ref))
+    assert frechet_distance(a[:2000], a[2000:]) < 0.05 * fd
