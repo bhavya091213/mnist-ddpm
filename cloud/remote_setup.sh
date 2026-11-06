@@ -17,6 +17,7 @@ fi
 if command -v uv >/dev/null 2>&1; then
   uv pip install --python .venv/bin/python -e ".[dev]"
 else
+  .venv/bin/python -m pip install -q -U pip setuptools wheel
   .venv/bin/python -m pip install -q -e ".[dev]"
 fi
 

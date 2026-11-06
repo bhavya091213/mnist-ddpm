@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs ON the instance, intended under nohup:
 #   cd ~/mnist-flow && nohup bash cloud/remote_run.sh > runs/remote_run.out 2>&1 &
-# Env overrides: EPOCHS (default 20), N (default 10000).
+# Env overrides: EPOCHS (default 20), N (default 10000), EVAL_BS (default 2500).
 set -euo pipefail
 
 cd "$HOME/mnist-flow"
@@ -23,11 +23,11 @@ for m in ddpm rf; do
 done
 
 STEP="evaluate"
-"$PY" -u -m mnist_flow.evaluate --ckpt-dir checkpoints --out results --n "$N" > runs/evaluate.log 2>&1
+"$PY" -u -m mnist_flow.evaluate --ckpt-dir checkpoints --out results --n "$N" --batch-size "${EVAL_BS:-2500}" --device cuda > runs/evaluate.log 2>&1
 echo "evaluate done" >> "$STATUS"
 
 STEP="trajectory"
-"$PY" -u -m mnist_flow.trajectory --ckpt-dir checkpoints --out results/figures > runs/trajectory.log 2>&1
+"$PY" -u -m mnist_flow.trajectory --ckpt-dir checkpoints --out results/figures --device cuda > runs/trajectory.log 2>&1
 echo "trajectory done" >> "$STATUS"
 
 echo "all done" >> "$STATUS"

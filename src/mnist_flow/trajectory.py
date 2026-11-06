@@ -23,9 +23,8 @@ from torch import Tensor  # noqa: E402
 from torchvision.utils import make_grid  # noqa: E402
 
 from mnist_flow import ddpm  # noqa: E402
-from mnist_flow.evaluate import (  # noqa: E402
-    NOISE_SEED, LoadedModel, _generate, _make_noise_bank, load_pair,
-)
+from mnist_flow.evaluate import NOISE_SEED, LoadedModel, load_pair  # noqa: E402
+from mnist_flow.sample import generate, make_noise_bank  # noqa: E402
 from mnist_flow.utils import get_device  # noqa: E402
 
 GIF_MS_PER_FRAME = 100
@@ -101,10 +100,13 @@ def run_trajectory(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     models = load_pair(Path(ckpt_dir), dev)  # EMA weights + fairness check
-    noise = _make_noise_bank(seeds, noise_seed)  # same as first rows of eval bank
+    noise = make_noise_bank(seeds, noise_seed, "cpu")  # same as first rows of eval bank
     k = keep_every_for(steps, frames)
-    _, _, d_frames = _generate(models["ddpm"], "ddpm", "ddim", steps, noise.to(dev), keep_every=k)
-    _, _, r_frames = _generate(models["rf"], "rf", "euler", steps, noise.to(dev), keep_every=k)
+    _, _, d_frames = generate(
+        models["ddpm"].model, "ddpm", sampler="ddim", steps=steps, noise=noise.to(dev),
+        sched=ddpm.make_schedule(models["ddpm"].cfg), keep_every=k)
+    _, _, r_frames = generate(
+        models["rf"].model, "rf", sampler="euler", steps=steps, noise=noise.to(dev), keep_every=k)
     d_frames = [f.cpu() for f in d_frames]
     r_frames = [noise.clone()] + [f.cpu() for f in r_frames]  # RF omits the start state
     if len(d_frames) != len(r_frames):

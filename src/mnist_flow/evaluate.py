@@ -18,9 +18,9 @@ from typing import Any, Callable, Sequence
 
 import torch
 from torch import Tensor
-from torchvision.utils import save_image
 
-from mnist_flow import ddpm, rf
+from mnist_flow import ddpm
+from mnist_flow.checkpoint import build_model_from_checkpoint, load_checkpoint
 from mnist_flow.classifier import (
     MNISTClassifier, evaluate_accuracy, extract_features, load_classifier,
     predict_logits, save_classifier, train_classifier,
@@ -30,6 +30,7 @@ from mnist_flow.data import load_mnist
 from mnist_flow.metrics import (
     class_histogram, coverage_entropy, frechet_distance, mean_confidence,
 )
+from mnist_flow.sample import generate, make_noise_bank, save_grid, to_uint8
 from mnist_flow.unet import UNet
 from mnist_flow.utils import get_device
 
@@ -41,7 +42,6 @@ MODEL_NAMES = ("ddpm", "rf")
 GRID_N = 64
 SAMPLES_SAVED = 1000
 FLOOR_SUBSET_SEED = 0
-IMG_SHAPE = (1, 28, 28)
 
 
 @dataclass(frozen=True)
@@ -65,49 +65,21 @@ class LoadedModel:
 
 
 # ---------------------------------------------------------------- helpers
-# NOTE: _make_noise_bank/_to_uint8/_save_grid/_generate are private stand-ins
-# for unit-05's sample.py equivalents; dedupe once that unit lands.
-
-def _make_noise_bank(n: int, seed: int = NOISE_SEED) -> Tensor:
-    """(n,1,28,28) standard normal noise from a CPU generator (device-independent)."""
-    g = torch.Generator(device="cpu").manual_seed(seed)
-    return torch.randn((n, *IMG_SHAPE), generator=g)
-
-
 def _tensor_hash(x: Tensor) -> str:
     return hashlib.sha256(x.detach().cpu().contiguous().numpy().tobytes()).hexdigest()
-
-
-def _to_uint8(x: Tensor) -> Tensor:
-    return ((x.clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)
-
-
-def _save_grid(x: Tensor, path: Path, nrow: int = 8) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    save_image((x.clamp(-1, 1) + 1) / 2, str(path), nrow=nrow, padding=2)
 
 
 def _generate(
     lm: LoadedModel, model_name: str, sampler: str, steps: int | None, noise: Tensor,
     *, generator: torch.Generator | None = None, keep_every: int | None = None,
 ) -> tuple[Tensor, int, list[Tensor]]:
-    """Dispatch one sampler call; returns (x0, nfe, frames) per the sampler contract."""
-    m = lm.model
-    if model_name == "ddpm":
-        sched = ddpm.make_schedule(lm.cfg)
-        if sampler == "ancestral":
-            return ddpm.sample_ancestral(m, noise, steps=steps, keep_every=keep_every,
-                                         sched=sched, generator=generator)
-        if sampler in ("ddim", "ancestral_strided"):
-            eta = 1.0 if sampler == "ancestral_strided" else 0.0
-            return ddpm.sample_ddim(m, noise, steps=steps, keep_every=keep_every,
-                                    sched=sched, eta=eta, generator=generator)
-    elif model_name == "rf":
-        if sampler == "euler":
-            return rf.sample_euler(m, noise, steps=steps, keep_every=keep_every)
-        if sampler == "heun":
-            return rf.sample_heun(m, noise, steps=steps, keep_every=keep_every)
-    raise ValueError(f"unknown model/sampler: {model_name}/{sampler}")
+    """Map evaluate's sampler names onto sample.generate; returns (x0, nfe, frames)."""
+    sched = ddpm.make_schedule(lm.cfg) if model_name == "ddpm" else None
+    eta = 0.0
+    if sampler == "ancestral_strided":  # strided DDIM with eta=1 (stochastic)
+        sampler, eta = "ddim", 1.0
+    return generate(lm.model, model_name, sampler=sampler, steps=steps, noise=noise,
+                    sched=sched, eta=eta, keep_every=keep_every, generator=generator)
 
 
 def check_fairness(cfg_a: dict[str, Any], cfg_b: dict[str, Any]) -> None:
@@ -128,19 +100,17 @@ def find_checkpoint(ckpt_dir: Path, model_name: str) -> Path:
     raise FileNotFoundError(f"no final.pt/last.pt for {model_name!r} under {ckpt_dir}")
 
 
-def load_ema_model(path: Path, model_name: str, device: torch.device) -> LoadedModel:
-    ckpt = torch.load(path, map_location="cpu", weights_only=True)
+def _load_model(path: Path, model_name: str, device: torch.device) -> LoadedModel:
+    ckpt = load_checkpoint(path, "cpu")
     if ckpt.get("model_name", model_name) != model_name:
         raise ValueError(f"{path}: model_name={ckpt.get('model_name')!r}, expected {model_name!r}")
-    cfg = Config.from_dict(ckpt["config"])
-    model = UNet(cfg)
-    model.load_state_dict(ckpt["ema"])  # fairness: EMA weights for both models
-    return LoadedModel(model.to(device).eval(), cfg, dict(ckpt["config"]), Path(path),
+    model, cfg = build_model_from_checkpoint(ckpt, device, use_ema=True)  # fairness: EMA
+    return LoadedModel(model, cfg, dict(ckpt["config"]), Path(path),
                        int(ckpt.get("step", -1)), int(ckpt.get("epoch", -1)))
 
 
 def load_pair(ckpt_dir: Path, device: torch.device) -> dict[str, LoadedModel]:
-    models = {n: load_ema_model(find_checkpoint(ckpt_dir, n), n, device) for n in MODEL_NAMES}
+    models = {n: _load_model(find_checkpoint(ckpt_dir, n), n, device) for n in MODEL_NAMES}
     check_fairness(models["ddpm"].cfg_dict, models["rf"].cfg_dict)
     return models
 
@@ -248,7 +218,7 @@ def run_evaluation(
     models = load_pair(Path(ckpt_dir), dev)  # fails loudly on config mismatch
     clf, x_test, acc = _get_classifier(out / "classifier.pt", data_root, dev, classifier_epochs)
     real_feat = extract_features(clf, x_test, batch_size=batch_size)  # once
-    noise_bank = _make_noise_bank(n, noise_seed)  # shared by every row
+    noise_bank = make_noise_bank(n, noise_seed, "cpu")  # shared by every row
 
     metrics_path = out / "metrics.json"
     _move_aside(metrics_path)
@@ -275,8 +245,8 @@ def run_evaluation(
                "requested_steps": spec.requested_steps, "nfe": nfe, "n": int(x.shape[0]),
                **_metrics_vs_real(clf, real_feat, x, batch_size), "seconds": secs,
                "noise_sha256_first64": noise_hash}
-        torch.save(_to_uint8(x[:SAMPLES_SAVED]).clone(), out / "samples" / f"{name}.pt")
-        _save_grid(x[:GRID_N], out / "figures" / f"grid_{name}.png")
+        torch.save(to_uint8(x[:SAMPLES_SAVED]).clone(), out / "samples" / f"{name}.pt")
+        save_grid(x[:GRID_N], out / "figures" / f"grid_{name}.png")
         metrics["rows"].append(row)
         _write_json(metrics, metrics_path)
         print(f"[eval] {name}: fid={row['fid']:.3f} ({secs:.1f}s)", flush=True)

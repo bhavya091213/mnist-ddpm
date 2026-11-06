@@ -8,6 +8,7 @@ import torch
 from mnist_flow import evaluate as ev
 from mnist_flow import plots
 from mnist_flow.config import Config
+from mnist_flow.sample import make_noise_bank
 from mnist_flow.unet import UNet
 
 T_SMALL = 20
@@ -90,7 +91,7 @@ def test_same_noise_for_every_row(ckpt_dir, tmp_path):
     result = _run(ckpt_dir, tmp_path / "r", include_heun=True)
     hashes = {r["noise_sha256_first64"] for r in result["rows"]}
     assert len(hashes) == 1
-    expected = ev._tensor_hash(ev._make_noise_bank(16, 1234)[:64])
+    expected = ev._tensor_hash(make_noise_bank(16, 1234, "cpu")[:64])
     assert hashes == {expected}
     heun = [r for r in result["rows"] if r["sampler"] == "heun"]
     assert heun and all(r["nfe"] == 2 * r["requested_steps"] for r in heun)
@@ -130,7 +131,7 @@ def test_wrong_model_name_raises(tmp_path):
     p = tmp_path / "ddpm" / "final.pt"
     make_ckpt(p, _cfg(), "rf")
     with pytest.raises(ValueError, match="model_name"):
-        ev.load_ema_model(p, "ddpm", torch.device("cpu"))
+        ev._load_model(p, "ddpm", torch.device("cpu"))
 
 
 def test_parse_nfe_and_cli(ckpt_dir, tmp_path, monkeypatch):
