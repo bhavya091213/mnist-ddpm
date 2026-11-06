@@ -1,0 +1,14 @@
+.env
+.venv/
+data/
+checkpoints/
+runs/
+.orchestrate/
+.lambda-run/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+*.egg-info/
