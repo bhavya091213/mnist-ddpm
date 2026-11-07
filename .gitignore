@@ -18,3 +18,4 @@ runs/*
 results/metrics.partial.json
 results/metrics.json.bak-*
 results/figures/*_partial.png
+.claude/
