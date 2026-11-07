@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov"]
+dev = ["pytest", "pytest-cov", "pandas", "jupyter", "nbconvert", "ipykernel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
