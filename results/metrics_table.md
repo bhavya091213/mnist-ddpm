@@ -1,0 +1,25 @@
+| name | model | sampler | nfe | n | fid | coverage_entropy | mean_confidence | seconds |
+|---|---|---|---|---|---|---|---|---|
+| ddpm_ddim_nfe1 | ddpm | ddim | 1 | 10000 | 1083.288 | 1.297 | 0.659 | 1.036 |
+| ddpm_ancestral_strided_nfe1 | ddpm | ancestral_strided | 1 | 10000 | 1083.288 | 1.297 | 0.659 | 0.863 |
+| rf_euler_nfe1 | rf | euler | 1 | 10000 | 2709.946 | 0.136 | 0.390 | 0.822 |
+| ddpm_ddim_nfe2 | ddpm | ddim | 2 | 10000 | 1087.879 | 1.304 | 0.655 | 1.657 |
+| ddpm_ancestral_strided_nfe2 | ddpm | ancestral_strided | 2 | 10000 | 1089.099 | 1.300 | 0.655 | 1.658 |
+| rf_euler_nfe2 | rf | euler | 2 | 10000 | 599.210 | 2.032 | 0.769 | 1.631 |
+| ddpm_ddim_nfe5 | ddpm | ddim | 5 | 10000 | 102.435 | 2.277 | 0.893 | 4.093 |
+| ddpm_ancestral_strided_nfe5 | ddpm | ancestral_strided | 5 | 10000 | 167.997 | 2.262 | 0.884 | 4.114 |
+| rf_euler_nfe5 | rf | euler | 5 | 10000 | 65.454 | 2.276 | 0.906 | 4.065 |
+| ddpm_ddim_nfe10 | ddpm | ddim | 10 | 10000 | 18.786 | 2.294 | 0.932 | 7.918 |
+| ddpm_ancestral_strided_nfe10 | ddpm | ancestral_strided | 10 | 10000 | 32.571 | 2.284 | 0.936 | 8.195 |
+| rf_euler_nfe10 | rf | euler | 10 | 10000 | 19.720 | 2.294 | 0.934 | 8.125 |
+| ddpm_ddim_nfe20 | ddpm | ddim | 20 | 10000 | 8.609 | 2.296 | 0.943 | 16.101 |
+| ddpm_ancestral_strided_nfe20 | ddpm | ancestral_strided | 20 | 10000 | 10.905 | 2.294 | 0.954 | 16.167 |
+| rf_euler_nfe20 | rf | euler | 20 | 10000 | 9.220 | 2.297 | 0.946 | 16.218 |
+| ddpm_ddim_nfe50 | ddpm | ddim | 50 | 10000 | 6.062 | 2.297 | 0.950 | 40.257 |
+| ddpm_ancestral_strided_nfe50 | ddpm | ancestral_strided | 50 | 10000 | 6.696 | 2.293 | 0.962 | 40.489 |
+| rf_euler_nfe50 | rf | euler | 50 | 10000 | 6.052 | 2.297 | 0.952 | 40.386 |
+| ddpm_ddim_nfe100 | ddpm | ddim | 100 | 10000 | 5.604 | 2.296 | 0.952 | 80.676 |
+| ddpm_ancestral_strided_nfe100 | ddpm | ancestral_strided | 100 | 10000 | 5.092 | 2.295 | 0.962 | 81.080 |
+| rf_euler_nfe100 | rf | euler | 100 | 10000 | 5.291 | 2.298 | 0.954 | 80.587 |
+| ddpm_ancestral_nfe1000 | ddpm | ancestral | 1000 | 10000 | 4.136 | 2.296 | 0.963 | 667.733 |
+| floor_train_vs_test | real | train_subset | 0 | 10000 | 2.913 | 2.299 | 0.981 | 0.163 |

@@ -1,0 +1,22 @@
+2026-11-06 20:00:18,318 start model=rf epoch=0/20 step=0 device=cuda
+2026-11-06 20:00:44,209 epoch=1 step=468 loss=0.283926 seconds=25.9
+2026-11-06 20:01:10,017 epoch=2 step=936 loss=0.200103 seconds=25.2
+2026-11-06 20:01:35,868 epoch=3 step=1404 loss=0.190548 seconds=25.2
+2026-11-06 20:02:01,667 epoch=4 step=1872 loss=0.185548 seconds=25.2
+2026-11-06 20:02:27,480 epoch=5 step=2340 loss=0.181990 seconds=25.2
+2026-11-06 20:02:53,322 epoch=6 step=2808 loss=0.179612 seconds=25.2
+2026-11-06 20:03:19,168 epoch=7 step=3276 loss=0.178798 seconds=25.2
+2026-11-06 20:03:45,020 epoch=8 step=3744 loss=0.177250 seconds=25.2
+2026-11-06 20:04:10,878 epoch=9 step=4212 loss=0.176084 seconds=25.2
+2026-11-06 20:04:36,717 epoch=10 step=4680 loss=0.174338 seconds=25.2
+2026-11-06 20:05:02,575 epoch=11 step=5148 loss=0.174350 seconds=25.2
+2026-11-06 20:05:28,386 epoch=12 step=5616 loss=0.173084 seconds=25.2
+2026-11-06 20:05:54,225 epoch=13 step=6084 loss=0.172386 seconds=25.2
+2026-11-06 20:06:20,086 epoch=14 step=6552 loss=0.172467 seconds=25.2
+2026-11-06 20:06:45,948 epoch=15 step=7020 loss=0.171819 seconds=25.2
+2026-11-06 20:07:11,797 epoch=16 step=7488 loss=0.171231 seconds=25.2
+2026-11-06 20:07:37,684 epoch=17 step=7956 loss=0.170541 seconds=25.2
+2026-11-06 20:08:03,546 epoch=18 step=8424 loss=0.171246 seconds=25.2
+2026-11-06 20:08:29,381 epoch=19 step=8892 loss=0.170398 seconds=25.2
+2026-11-06 20:08:55,207 epoch=20 step=9360 loss=0.169929 seconds=25.2
+2026-11-06 20:08:56,001 done final=checkpoints_viz/rf/final.pt
